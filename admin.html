@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="tg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Ultimate | Nexus Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        :root { --primary: #6366f1; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f1f5f9; min-height: 100vh; }
+        
+        /* Auth Panel */
+        .auth-wrapper { height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .auth-card { background: white; padding: 40px; border-radius: 35px; box-shadow: 0 25px 50px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+
+        /* Dashboard */
+        .glass-panel { background: white; border-radius: 30px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .user-row img { width: 60px; height: 60px; border-radius: 15px; object-fit: cover; }
+        
+        /* Theme Bubbles */
+        .theme-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+        .theme-btn { height: 40px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; transition: 0.3s; }
+        .theme-btn:hover { transform: scale(1.05); }
+        .theme-btn.active { border-color: var(--primary); transform: scale(1.1); }
+
+        .btn-edit { background: #eef2ff; color: #4f46e5; border: none; }
+        .btn-del { background: #fff1f2; color: #e11d48; border: none; }
+        .rounded-15 { border-radius: 15px; }
+    </style>
+</head>
+<body>
+
+<!-- AUTH SECTION -->
+<div id="authSection" class="auth-wrapper container">
+    <div class="auth-card text-center">
+        <div class="mb-4"><i class="fas fa-fingerprint fa-4x text-primary"></i></div>
+        <h2 class="fw-800 mb-4">Admin Access</h2>
+        <input type="password" id="adminPass" class="form-control form-control-lg text-center rounded-pill mb-3" placeholder="Рамз: вуруд кунед">
+        <button class="btn btn-primary w-100 py-3 rounded-pill fw-bold" onclick="checkAuth()">ВУРУД</button>
+    </div>
+</div>
+
+<!-- MAIN ADMIN PANEL -->
+<div id="adminPanel" class="container py-5 d-none">
+    <div class="row g-4">
+        <!-- Темаҳо -->
+        <div class="col-lg-4">
+            <div class="glass-panel h-100">
+                <h4 class="fw-800 mb-4"><i class="fas fa-palette me-2"></i>Инхоби Тема (7 намуд)</h4>
+                <div class="theme-grid" id="themeGrid">
+                    <!-- Темаҳо бо JS сохта мешаванд -->
+                </div>
+                <p class="text-muted small">Темаи интихобшуда худкор дар саҳифаи асосӣ истифода мешавад.</p>
+                <hr>
+                <a href="index.html" class="btn btn-dark w-100 rounded-pill py-3 mt-3">
+                    <i class="fas fa-home me-2"></i>Саҳифаи Асосӣ
+                </a>
+            </div>
+        </div>
+
+        <!-- Рӯйхати Истифодабарандагон -->
+        <div class="col-lg-8">
+            <div class="glass-panel h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-800 m-0">Идоракунии Корбарон</h4>
+                    <span class="badge bg-primary rounded-pill px-3 py-2" id="userCount">0 нафар</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <tbody id="adminTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-30 border-0 shadow-lg p-4" style="border-radius: 30px;">
+            <h3 class="fw-800 mb-4 text-center">Таҳрири маълумот</h3>
+            <input type="hidden" id="editId">
+            <div class="mb-3">
+                <label class="form-label fw-bold">Ном ва Насаб</label>
+                <input type="text" id="editName" class="form-control rounded-15 p-3">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Синну сол</label>
+                <input type="number" id="editAge" class="form-control rounded-15 p-3">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Таҷриба</label>
+                <input type="text" id="editExp" class="form-control rounded-15 p-3">
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-light w-100 py-3 rounded-pill" data-bs-dismiss="modal">Бекор кардан</button>
+                <button class="btn btn-primary w-100 py-3 rounded-pill fw-bold" onclick="updateUser()">САБТ КАРДАН</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const PASS = "2010";
+    const themes = [
+        { id: 'light', color: '#ffffff', name: 'Standard' },
+        { id: 'dark', color: '#1e293b', name: 'Midnight' },
+        { id: 'purple', color: '#581c87', name: 'Royal' },
+        { id: 'ocean', color: '#0369a1', name: 'Ocean' },
+        { id: 'forest', color: '#14532d', name: 'Forest' },
+        { id: 'sunset', color: '#9a3412', name: 'Sunset' },
+        { id: 'premium', color: 'linear-gradient(45deg, #000, #434343)', name: 'Premium' }
+    ];
+
+    // Auth logic
+    document.getElementById("adminPass").addEventListener("keypress", e => e.key === "Enter" && checkAuth());
+
+    function checkAuth() {
+        if(document.getElementById("adminPass").value === PASS) {
+            document.getElementById("authSection").remove();
+            document.getElementById("adminPanel").classList.remove("d-none");
+            initAdmin();
+        } else {
+            alert("❌ Хато!");
+        }
+    }
+
+    function initAdmin() {
+        renderThemes();
+        renderTable();
+    }
+
+    // Theme Logic
+    function renderThemes() {
+        const grid = document.getElementById("themeGrid");
+        const currentTheme = localStorage.getItem("activeTheme") || 'light';
+        
+        grid.innerHTML = themes.map(t => `
+            <div class="theme-btn ${currentTheme === t.id ? 'active' : ''}" 
+                 style="background: ${t.color}" 
+                 onclick="setTheme('${t.id}')" 
+                 title="${t.name}"></div>
+        `).join("");
+    }
+
+    function setTheme(themeId) {
+        localStorage.setItem("activeTheme", themeId);
+        renderThemes();
+        alert(`✅ Темаи "${themeId}" фаъол шуд!`);
+    }
+
+    // User Table Logic
+    function renderTable() {
+        const users = JSON.parse(localStorage.getItem("users")) || [];
+        const table = document.getElementById("adminTable");
+        document.getElementById("userCount").innerText = users.length + " нафар";
+
+        table.innerHTML = users.map(u => `
+            <tr class="user-row">
+                <td><img src="${u.img}"></td>
+                <td>
+                    <div class="fw-800">${u.name}</div>
+                    <div class="small text-muted">${u.age} сола</div>
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-edit btn-sm rounded-pill p-2 px-3 me-1" onclick="openEdit(${u.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-del btn-sm rounded-pill p-2 px-3" onclick="deleteUser(${u.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join("");
+    }
+
+    // EDIT MODAL Logic
+    const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+
+    function openEdit(id) {
+        const users = JSON.parse(localStorage.getItem("users"));
+        const u = users.find(x => x.id === id);
+        
+        document.getElementById("editId").value = u.id;
+        document.getElementById("editName").value = u.name;
+        document.getElementById("editAge").value = u.age;
+        document.getElementById("editExp").value = u.exp;
+        
+        editModal.show();
+    }
+
+    function updateUser() {
+        const id = Number(document.getElementById("editId").value);
+        let users = JSON.parse(localStorage.getItem("users"));
+        
+        const index = users.findIndex(u => u.id === id);
+        users[index].name = document.getElementById("editName").value;
+        users[index].age = document.getElementById("editAge").value;
+        users[index].exp = document.getElementById("editExp").value;
+        
+        localStorage.setItem("users", JSON.stringify(users));
+        editModal.hide();
+        renderTable();
+    }
+
+    function deleteUser(id) {
+        if(confirm("Нест карда шавад?")) {
+            let users = JSON.parse(localStorage.getItem("users"));
+            users = users.filter(u => u.id !== id);
+            localStorage.setItem("users", JSON.stringify(users));
+            renderTable();
+        }
+    }
+</script>
+</body>
+</html>
