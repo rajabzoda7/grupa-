@@ -1,41 +1,48 @@
-// 1. ТАЙИН КАРДАНИ ТЕМА
-function applyTheme() {
-    const activeTheme = localStorage.getItem("activeTheme") || 'light';
+// ============ THEME FUNCTIONS ============
+
+// 1. APPLY THEME from Firebase
+async function applyTheme() {
+    const activeTheme = await getTheme();
     document.body.className = "theme-" + activeTheme;
 }
 
-// 2. НАМОИШИ КОРТҲО
-async function render() {
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-    const grid = document.getElementById("mainGrid");
-    
-    if(users.length === 0) {
-        grid.innerHTML = `<div class="text-center w-100 mt-5"><h2 class="opacity-50">Маълумот нест</h2></div>`;
-        return;
-    }
+// ============ RENDER USERS FROM FIREBASE ============
 
-    grid.innerHTML = users.map(u => `
-        <div class="col-md-4 col-sm-6">
-            <div class="card h-100">
-                <img src="${u.img || 'https://via.placeholder.com/300'}" class="card-img-top" alt="user">
-                <div class="card-body p-4">
-                    <h4 class="fw-800 mb-1">${u.name}</h4>
-                    <p class="opacity-75 mb-2">${u.info || 'Маълумот нест'}</p>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="badge bg-primary rounded-pill">${u.age} сола, ${u.year} сол таҷриба</span>
-                        <div>
-                            <button class="btn btn-sm btn-outline-info rounded-pill me-1" onclick="openInfo(${u.id})">
-                                <i class="fas fa-eye"></i>
-                            </button>
+// 2. DISPLAY CARDS - REAL-TIME SYNC ⚡
+function render() {
+    onUsersChange(async (users) => {
+        const grid = document.getElementById("mainGrid");
+        
+        if(!users || users.length === 0) {
+            grid.innerHTML = `<div class="text-center w-100 mt-5"><h2 class="opacity-50">Маълумот нест</h2></div>`;
+            return;
+        }
+
+        grid.innerHTML = users.map(u => `
+            <div class="col-md-4 col-sm-6">
+                <div class="card h-100">
+                    <img src="${u.img || 'https://via.placeholder.com/300'}" class="card-img-top" alt="user">
+                    <div class="card-body p-4">
+                        <h4 class="fw-800 mb-1">${u.name}</h4>
+                        <p class="opacity-75 mb-2">${u.info || 'Маълумот нест'}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-primary rounded-pill">${u.age} сола, ${u.year} сол таҷриба</span>
+                            <div>
+                                <button class="btn btn-sm btn-outline-info rounded-pill me-1" onclick="openInfo('${u.id}')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    `).join("");
+        `).join("");
+    });
 }
 
-// 3. ЗАХИРАИ КОРБАРИ НАВ
+// ============ SAVE NEW USER TO FIREBASE ============
+
+// 3. SAVE USER - WITH IMAGE AS BASE64
 async function saveUser() {
     const name = document.getElementById("newName").value;
     const age = document.getElementById("newAge").value;
@@ -45,20 +52,35 @@ async function saveUser() {
 
     if(!name || !age) return alert("Пур кунед!");
 
-    let img = '';
+    let img = 'https://via.placeholder.com/300';
     if(imgFile) {
         img = await toBase64(imgFile);
     }
 
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-    users.push({ id: Date.now(), name, age, year, info, img });
-    localStorage.setItem("users", JSON.stringify(users));
+    const newUser = { 
+        name, 
+        age: Number(age), 
+        year: Number(year), 
+        info, 
+        img,
+        timestamp: new Date().toISOString()
+    };
+
+    await addUser(newUser);
+    
+    // Clear form
+    document.getElementById("newName").value = '';
+    document.getElementById("newAge").value = '';
+    document.getElementById("newYear").value = '';
+    document.getElementById("newInfo").value = '';
+    document.getElementById("newImgFile").value = '';
     
     bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
-    await render();
 }
 
-// Функсия барои табдил ба base64
+// ============ HELPER FUNCTIONS ============
+
+// Convert file to Base64
 function toBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -68,7 +90,7 @@ function toBase64(file) {
     });
 }
 
-// Функсия барои намоиши модалҳои иттилоот
+// Show notification modal
 function showModal(title, message, type) {
     const modalHtml = `
         <div class="modal fade" id="infoModal" tabindex="-1">
@@ -91,9 +113,11 @@ function showModal(title, message, type) {
     });
 }
 
+// Open user info modal
 async function openInfo(id) {
-    const users = JSON.parse(localStorage.getItem("users")) || [];
+    const users = await getUsers();
     const user = users.find(u => u.id === id);
+    
     if(!user) return showModal('Хатогӣ', 'Истифодабаранда ёфт нашуд.', 'error');
 
     const infoHtml = `
@@ -107,7 +131,7 @@ async function openInfo(id) {
                         <div class="col-md-7 p-4">
                             <h3 class="fw-800 mb-3">${user.name}</h3>
                             <p class="mb-2"><strong>Синну сол:</strong> ${user.age} сола</p>
-                            <p class="mb-2"><strong>Таърифа:</strong> ${user.year} сол таҷриба</p>
+                            <p class="mb-2"><strong>Таҷриба:</strong> ${user.year} сол</p>
                             <p class="mb-3"><strong>Маълумот:</strong> ${user.info || 'Маълумоти иловагӣ вуҷуд надорад'}</p>
                             <button class="btn btn-primary rounded-pill me-2" data-bs-dismiss="modal">Бастан</button>
                         </div>
@@ -123,8 +147,8 @@ async function openInfo(id) {
     });
 }
 
-// Дар вақти бор шудани саҳифа
+// ============ ON PAGE LOAD ============
 window.onload = async () => {
     await applyTheme();
-    await render();
+    render();
 };
