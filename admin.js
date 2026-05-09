@@ -88,31 +88,57 @@ async function openEdit(id) {
     const users = await getUsers();
     const u = users.find(x => x.id === id);
     
+    if(!u) {
+        alert('Корбар ёфт нашуд!');
+        return;
+    }
+    
     document.getElementById("editId").value = u.id;
-    document.getElementById("editName").value = u.name;
-    document.getElementById("editAge").value = u.age;
+    document.getElementById("editName").value = u.name || '';
+    document.getElementById("editAge").value = u.age || '';
     document.getElementById("editExp").value = u.year || u.exp || '';
     
     editModal.show();
 }
 
 async function updateUser() {
-    const id = document.getElementById("editId").value;
-    const updates = {
-        name: document.getElementById("editName").value,
-        age: Number(document.getElementById("editAge").value),
-        year: Number(document.getElementById("editExp").value)
-    };
-    
-    await updateUserData(id, updates);
-    editModal.hide();
-    renderTable();
+    try {
+        const id = document.getElementById("editId").value;
+        const name = document.getElementById("editName").value.trim();
+        const age = document.getElementById("editAge").value.trim();
+        const year = document.getElementById("editExp").value.trim();
+        
+        if(!name || !age) {
+            alert('Наме ва синну солро пур кунед!');
+            return;
+        }
+        
+        const updates = {
+            name,
+            age: Number(age),
+            year: Number(year) || 0
+        };
+        
+        await updateUserData(id, updates);
+        editModal.hide();
+        alert('✅ Маълумот бо муваффақият воригир шуд!');
+        renderTable();
+    } catch(error) {
+        console.error('Error updating user:', error);
+        alert('Хатогӣ: ' + error.message);
+    }
 }
 
-async function deleteUserFromFirebase(id) {
-    if(confirm("Нест карда шавад?")) {
-        await deleteUserData(id);
-        renderTable();
+async function deleteUserFirebase(id) {
+    if(confirm("Оё шумо мутмаин ҳастед? Ин амал барқарор нашаванд.")) {
+        try {
+            await deleteUserData(id);
+            alert('✅ Корбар нест карда шуд!');
+            renderTable();
+        } catch(error) {
+            console.error('Error deleting user:', error);
+            alert('Хатогӣ дар нест кардан: ' + error.message);
+        }
     }
 }
 

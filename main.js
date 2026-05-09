@@ -44,38 +44,58 @@ function render() {
 
 // 3. SAVE USER - WITH IMAGE AS BASE64
 async function saveUser() {
-    const name = document.getElementById("newName").value;
-    const age = document.getElementById("newAge").value;
-    const year = document.getElementById("newYear").value;
-    const info = document.getElementById("newInfo").value;
+    const name = document.getElementById("newName").value.trim();
+    const age = document.getElementById("newAge").value.trim();
+    const year = document.getElementById("newYear").value.trim();
+    const info = document.getElementById("newInfo").value.trim();
     const imgFile = document.getElementById("newImgFile").files[0];
 
-    if(!name || !age) return alert("Пур кунед!");
+    if(!name || !age) {
+        alert("Наме ва синну солро пур кунед!");
+        return;
+    }
 
-    let img = 'https://via.placeholder.com/300';
+    let img = 'https://via.placeholder.com/300?text=' + encodeURIComponent(name);
     if(imgFile) {
-        img = await toBase64(imgFile);
+        try {
+            img = await toBase64(imgFile);
+        } catch(error) {
+            alert('Хатогӣ ҳангоми бора сохтани сурат: ' + error.message);
+            return;
+        }
     }
 
     const newUser = { 
         name, 
         age: Number(age), 
-        year: Number(year), 
+        year: Number(year) || 0, 
         info, 
         img,
         timestamp: new Date().toISOString()
     };
 
-    await addUser(newUser);
-    
-    // Clear form
-    document.getElementById("newName").value = '';
-    document.getElementById("newAge").value = '';
-    document.getElementById("newYear").value = '';
-    document.getElementById("newInfo").value = '';
-    document.getElementById("newImgFile").value = '';
-    
-    bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+    try {
+        await addUser(newUser);
+        
+        // Clear form fields
+        document.getElementById("newName").value = '';
+        document.getElementById("newAge").value = '';
+        document.getElementById("newYear").value = '';
+        document.getElementById("newInfo").value = '';
+        document.getElementById("newImgFile").value = '';
+        
+        // Close modal
+        const modalElement = document.getElementById('addModal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if(modal) {
+            modal.hide();
+        }
+        
+        alert('✅ Корбар бо муваффақият ифода шуд!');
+    } catch(error) {
+        console.error('Error saving user:', error);
+        alert('Хатогӣ дар ифода: ' + error.message);
+    }
 }
 
 // ============ HELPER FUNCTIONS ============
@@ -115,36 +135,41 @@ function showModal(title, message, type) {
 
 // Open user info modal
 async function openInfo(id) {
-    const users = await getUsers();
-    const user = users.find(u => u.id === id);
-    
-    if(!user) return showModal('Хатогӣ', 'Истифодабаранда ёфт нашуд.', 'error');
+    try {
+        const users = await getUsers();
+        const user = users.find(u => u.id === id);
+        
+        if(!user) return showModal('Хатогӣ', 'Истифодабаранда ёфт нашуд.', 'error');
 
-    const infoHtml = `
-        <div class="modal fade" id="userInfoModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered modal-lg">
-                <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
-                    <div class="row g-0">
-                        <div class="col-md-5">
-                            <img src="${user.img || 'https://via.placeholder.com/600x400'}" class="img-fluid h-100 w-100" alt="${user.name}">
-                        </div>
-                        <div class="col-md-7 p-4">
-                            <h3 class="fw-800 mb-3">${user.name}</h3>
-                            <p class="mb-2"><strong>Синну сол:</strong> ${user.age} сола</p>
-                            <p class="mb-2"><strong>Таҷриба:</strong> ${user.year} сол</p>
-                            <p class="mb-3"><strong>Маълумот:</strong> ${user.info || 'Маълумоти иловагӣ вуҷуд надорад'}</p>
-                            <button class="btn btn-primary rounded-pill me-2" data-bs-dismiss="modal">Бастан</button>
+        const infoHtml = `
+            <div class="modal fade" id="userInfoModal" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                        <div class="row g-0">
+                            <div class="col-md-5">
+                                <img src="${user.img || 'https://via.placeholder.com/600x400'}" class="img-fluid h-100 w-100" alt="${user.name}">
+                            </div>
+                            <div class="col-md-7 p-4">
+                                <h3 class="fw-800 mb-3">${user.name}</h3>
+                                <p class="mb-2"><strong>Синну сол:</strong> ${user.age} сола</p>
+                                <p class="mb-2"><strong>Таҷриба:</strong> ${user.year || 0} сол</p>
+                                <p class="mb-3"><strong>Маълумот:</strong> ${user.info || 'Маълумоти иловагӣ вуҷуд надорад'}</p>
+                                <button class="btn btn-primary rounded-pill me-2" data-bs-dismiss="modal">Бастан</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', infoHtml);
-    new bootstrap.Modal(document.getElementById('userInfoModal')).show();
-    document.getElementById('userInfoModal').addEventListener('hidden.bs.modal', () => {
-        document.getElementById('userInfoModal').remove();
-    });
+        `;
+        document.body.insertAdjacentHTML('beforeend', infoHtml);
+        new bootstrap.Modal(document.getElementById('userInfoModal')).show();
+        document.getElementById('userInfoModal').addEventListener('hidden.bs.modal', () => {
+            document.getElementById('userInfoModal').remove();
+        });
+    } catch(error) {
+        console.error('Error opening user info:', error);
+        showModal('Хатогӣ', 'Хатогӣ ҳангоми боркунии маълумот', 'error');
+    }
 }
 
 // ============ ON PAGE LOAD ============

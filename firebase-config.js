@@ -12,24 +12,40 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+console.log('✅ Firebase initialized successfully');
+
 // ============ FIREBASE DATABASE FUNCTIONS ============
 
 // GET ҳама коррбарон
 async function getUsers() {
-  return new Promise((resolve) => {
-    db.ref('users').on('value', (snapshot) => {
+  return new Promise((resolve, reject) => {
+    db.ref('users').once('value', (snapshot) => {
       const data = snapshot.val();
-      resolve(data ? Object.values(data) : []);
+      if(data) {
+        const users = Object.keys(data).map(key => ({ ...data[key], id: key }));
+        resolve(users);
+      } else {
+        resolve([]);
+      }
+    }, (error) => {
+      console.error('Error getting users:', error);
+      reject(error);
     });
   });
 }
 
 // ADD корбари нав
 async function addUser(user) {
-  const newRef = db.ref('users').push();
-  user.id = newRef.key;
-  await newRef.set(user);
-  return user;
+  try {
+    const newRef = db.ref('users').push();
+    const userData = { ...user, id: newRef.key };
+    await newRef.set(userData);
+    return userData;
+  } catch(error) {
+    console.error('Error adding user:', error);
+    alert('Хатогӣ дар ифода: ' + error.message);
+    throw error;
+  }
 }
 
 // UPDATE корбар
@@ -46,20 +62,35 @@ async function deleteUserData(id) {
 function onUsersChange(callback) {
   db.ref('users').on('value', (snapshot) => {
     const data = snapshot.val();
-    callback(data ? Object.values(data) : []);
+    if(data) {
+      const users = Object.keys(data).map(key => ({ ...data[key], id: key }));
+      callback(users);
+    } else {
+      callback([]);
+    }
+  }, (error) => {
+    console.error('Error listening to users:', error);
   });
 }
 
 // GET THEME аз Firebase
 async function getTheme() {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     db.ref('theme').once('value', (snapshot) => {
       resolve(snapshot.val() || 'light');
+    }, (error) => {
+      console.error('Error getting theme:', error);
+      reject(error);
     });
   });
 }
 
 // SET THEME дар Firebase
 async function setThemeData(themeId) {
-  await db.ref('theme').set(themeId);
+  try {
+    await db.ref('theme').set(themeId);
+  } catch(error) {
+    console.error('Error setting theme:', error);
+    throw error;
+  }
 }
